@@ -1,7 +1,6 @@
-#!name=HTTPDNS.Block.Custom
+#!name=🚫HTTPDNS Block
 #!desc=阻止HTTPDNS服务器（手动补充版）
 #!author=csjcsj666
-#!homepage=https://github.com/VirgilClyne/GetSomeFries/wiki/🚫-HTTPDNS
 
 [Rule]
 # 小红书 HTTPDNS
