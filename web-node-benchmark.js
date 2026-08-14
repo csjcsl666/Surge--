@@ -1,6 +1,9 @@
 /*
  * Web Node Benchmark
  * Surge iOS
+ *
+ * Only benchmarks first-level policies in the selected group.
+ * Nested policy groups will NOT be expanded.
  */
 
 const DEFAULTS = {
@@ -8,30 +11,28 @@ const DEFAULTS = {
   url: "https://www.google.com/generate_204",
   request_timeout: 6,
   concurrency: 8,
-  rounds: 3,
+  rounds: 1,
   top: 20
 };
 
+// Reject policies are meaningless for web benchmark.
+// DIRECT is intentionally NOT excluded.
 const EXCLUDE = new Set([
-  "DIRECT",
   "REJECT",
   "REJECT-DROP",
   "REJECT-TINYGIF"
 ]);
 
+/*
+ * Parse module arguments.
+ *
+ * Keep url as the final argument so URLs containing
+ * query parameters such as ?a=1&b=2 still work.
+ */
 function parseArgument(raw) {
   const result = {};
 
   if (!raw) return result;
-
-  /*
-   * URL is placed at the end of $argument.
-   * This allows URLs containing their own query parameters:
-   *
-   * https://example.com/?a=1&b=2
-   *
-   * without destroying the URL.
-   */
 
   const marker = "&url=";
   const urlIndex = raw.indexOf(marker);
@@ -44,21 +45,20 @@ function parseArgument(raw) {
   prefix.split("&").forEach(pair => {
     if (!pair) return;
 
-    const i = pair.indexOf("=");
+    const index = pair.indexOf("=");
 
-    if (i < 0) return;
+    if (index < 0) return;
 
-    const key = pair.slice(0, i);
-    const value = pair.slice(i + 1);
+    const key = pair.slice(0, index);
+    const value = pair.slice(index + 1);
 
     result[key] = value;
   });
 
   if (urlIndex >= 0) {
-    result.url =
-      raw.slice(
-        urlIndex + marker.length
-      );
+    result.url = raw.slice(
+      urlIndex + marker.length
+    );
   }
 
   return result;
@@ -70,8 +70,7 @@ function intValue(
   min,
   max
 ) {
-  const number =
-    parseInt(value, 10);
+  const number = parseInt(value, 10);
 
   if (!Number.isFinite(number)) {
     return fallback;
@@ -85,29 +84,19 @@ function intValue(
 
 function hostOf(url) {
   return String(url)
-    .replace(
-      /^https?:\/\//i,
-      ""
-    )
+    .replace(/^https?:\/\//i, "")
     .split("/")[0] || url;
 }
 
 function median(values) {
-  const sorted =
-    values
-      .slice()
-      .sort(
-        (a, b) => a - b
-      );
+  const sorted = values
+    .slice()
+    .sort((a, b) => a - b);
 
   const middle =
-    Math.floor(
-      sorted.length / 2
-    );
+    Math.floor(sorted.length / 2);
 
-  if (
-    sorted.length % 2
-  ) {
+  if (sorted.length % 2) {
     return sorted[middle];
   }
 
@@ -121,27 +110,21 @@ function median(values) {
 
 function doneError(message) {
   $done({
-    title:
-      "Web Node Benchmark",
-
-    content:
-      message,
-
-    style:
-      "error"
+    title: "Web Node Benchmark",
+    content: message,
+    style: "error"
   });
 }
 
 /*
- * Read module arguments
+ * Read arguments
  */
 
-const args =
-  parseArgument(
-    typeof $argument === "string"
-      ? $argument
-      : ""
-  );
+const args = parseArgument(
+  typeof $argument === "string"
+    ? $argument
+    : ""
+);
 
 const GROUP =
   args.group ||
@@ -184,21 +167,22 @@ const TOP =
   );
 
 /*
- * Validate target
+ * Validate URL
  */
 
-if (
-  !/^https?:\/\//i.test(
-    TARGET
-  )
-) {
-
+if (!/^https?:\/\//i.test(TARGET)) {
   doneError(
     `Invalid target URL:\n${TARGET}`
   );
-
 } else {
+  start();
+}
 
+/*
+ * Get ONLY first-level policies.
+ */
+
+function start() {
   const details =
     $surge.selectGroupDetails();
 
@@ -207,158 +191,78 @@ if (
     !details.groups ||
     !details.groups[GROUP]
   ) {
-
-    const groups =
-      details &&
-      details.groups
-        ? Object.keys(
-            details.groups
-          )
+    const availableGroups =
+      details && details.groups
+        ? Object.keys(details.groups)
         : [];
 
     doneError(
-      `Select group not found: ${GROUP}` +
+      `Policy group not found:\n${GROUP}` +
       (
-        groups.length
-          ? `\n\nAvailable select groups:\n${groups.join("\n")}`
+        availableGroups.length
+          ? `\n\nAvailable groups:\n${availableGroups.join("\n")}`
           : ""
       )
     );
 
-  } else {
-
-    const policies =
-      flattenSelectGroup(
-        GROUP,
-        details.groups
-      );
-
-    if (
-      !policies.length
-    ) {
-
-      doneError(
-        `No testable policies found in: ${GROUP}`
-      );
-
-    } else {
-
-      runBenchmark(
-        policies
-      );
-
-    }
-  }
-}
-
-/*
- * Recursively expand nested
- * Surge select groups.
- */
-
-function flattenSelectGroup(
-  root,
-  groups
-) {
-
-  const output = [];
-
-  const added =
-    new Set();
-
-  const visiting =
-    new Set();
-
-  function walk(
-    groupName
-  ) {
-
-    /*
-     * Protect against
-     * accidental group loops.
-     */
-
-    if (
-      visiting.has(
-        groupName
-      )
-    ) {
-      return;
-    }
-
-    visiting.add(
-      groupName
-    );
-
-    const children =
-      groups[groupName] ||
-      [];
-
-    children.forEach(
-      name => {
-
-        if (
-          !name ||
-          EXCLUDE.has(name)
-        ) {
-          return;
-        }
-
-        /*
-         * Nested select group
-         */
-
-        if (
-          groups[name]
-        ) {
-
-          walk(name);
-
-        } else if (
-          !added.has(name)
-        ) {
-
-          added.add(name);
-
-          output.push(name);
-
-        }
-      }
-    );
-
-    visiting.delete(
-      groupName
-    );
+    return;
   }
 
-  walk(root);
+  /*
+   * IMPORTANT:
+   *
+   * Do NOT recursively expand groups.
+   *
+   * Example:
+   *
+   * 节点选择
+   * ├─ 香港节点
+   * ├─ 日本节点
+   * ├─ 美国节点
+   * └─ 落地机
+   *
+   * We benchmark ONLY these four policies.
+   *
+   * If 香港节点 itself is SMART/select/url-test,
+   * Surge decides which underlying node it uses.
+   */
 
-  return output;
+  const policies =
+    details.groups[GROUP]
+      .filter(policy => {
+        return (
+          policy &&
+          !EXCLUDE.has(policy)
+        );
+      });
+
+  if (!policies.length) {
+    doneError(
+      `No testable policies found in:\n${GROUP}`
+    );
+
+    return;
+  }
+
+  runBenchmark(policies);
 }
 
 /*
  * Benchmark queue
  */
 
-function runBenchmark(
-  policies
-) {
-
+function runBenchmark(policies) {
   let cursor = 0;
-
   let active = 0;
-
   let finished = 0;
 
   const results = [];
 
   function pump() {
-
     while (
       active < CONCURRENCY &&
       cursor < policies.length
     ) {
-
       const policy =
         policies[cursor++];
 
@@ -367,28 +271,18 @@ function runBenchmark(
       testPolicy(
         policy,
         result => {
-
-          results.push(
-            result
-          );
+          results.push(result);
 
           active--;
-
           finished++;
 
           if (
             finished ===
             policies.length
           ) {
-
-            render(
-              results
-            );
-
+            render(results);
           } else {
-
             pump();
-
           }
         }
       );
@@ -399,81 +293,48 @@ function runBenchmark(
 }
 
 /*
- * Test one policy
- * multiple times.
+ * Test one first-level policy.
  */
 
 function testPolicy(
   policy,
   callback
 ) {
-
   const samples = [];
-
   const statuses = [];
 
   let failures = 0;
-
   let round = 0;
 
   function nextRound() {
-
-    if (
-      round >= ROUNDS
-    ) {
-
-      /*
-       * All rounds failed.
-       */
-
-      if (
-        !samples.length
-      ) {
-
+    if (round >= ROUNDS) {
+      if (!samples.length) {
         callback({
-          policy:
-            policy,
-
-          ok:
-            false,
-
-          failures:
-            ROUNDS
+          policy,
+          ok: false,
+          failures
         });
 
         return;
       }
 
-      /*
-       * Use median latency
-       * for ranking.
-       */
-
       callback({
-        policy:
-          policy,
-
-        ok:
-          true,
+        policy,
+        ok: true,
 
         median:
           median(samples),
 
         min:
-          Math.min(
-            ...samples
-          ),
+          Math.min(...samples),
 
         max:
-          Math.max(
-            ...samples
-          ),
+          Math.max(...samples),
 
         successes:
           samples.length,
 
-        failures:
-          failures,
+        failures,
 
         status:
           statuses[
@@ -489,11 +350,7 @@ function testPolicy(
     testOnce(
       policy,
       result => {
-
-        if (
-          result.ok
-        ) {
-
+        if (result.ok) {
           samples.push(
             result.time
           );
@@ -501,15 +358,11 @@ function testPolicy(
           statuses.push(
             result.status
           );
-
         } else {
-
           failures++;
-
         }
 
         nextRound();
-
       }
     );
   }
@@ -518,37 +371,33 @@ function testPolicy(
 }
 
 /*
- * Single HTTP GET benchmark
+ * One HTTP GET request.
  */
 
 function testOnce(
   policy,
   callback
 ) {
-
   const started =
     Date.now();
 
   $httpClient.get(
     {
-
-      url:
-        TARGET,
+      url: TARGET,
 
       /*
-       * Critical:
-       * force request through
-       * this Surge policy.
+       * Force this request through
+       * the selected first-level policy.
+       *
+       * If the policy itself is SMART,
+       * Surge SMART decides the actual node.
        */
-
-      policy:
-        policy,
+      policy: policy,
 
       timeout:
         REQUEST_TIMEOUT,
 
       headers: {
-
         "User-Agent":
           "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
 
@@ -562,44 +411,29 @@ function testOnce(
           "no-cache"
       },
 
-      "auto-redirect":
-        true,
-
-      "auto-cookie":
-        false
+      "auto-redirect": true,
+      "auto-cookie": false
     },
 
     (
       error,
       response
     ) => {
-
       const elapsed =
-        Date.now() -
-        started;
+        Date.now() - started;
 
-      if (
-        error
-      ) {
-
+      if (error) {
         callback({
-          ok:
-            false,
-
-          time:
-            elapsed,
-
-          error:
-            String(error)
+          ok: false,
+          time: elapsed,
+          error: String(error)
         });
 
         return;
       }
 
       callback({
-
-        ok:
-          true,
+        ok: true,
 
         time:
           elapsed,
@@ -616,18 +450,13 @@ function testOnce(
 }
 
 /*
- * Render Surge Panel
+ * Render panel
  */
 
-function render(
-  results
-) {
-
+function render(results) {
   const success =
     results
-      .filter(
-        item => item.ok
-      )
+      .filter(item => item.ok)
       .sort(
         (a, b) =>
           a.median -
@@ -636,9 +465,7 @@ function render(
 
   const failed =
     results
-      .filter(
-        item => !item.ok
-      )
+      .filter(item => !item.ok)
       .sort(
         (a, b) =>
           a.policy.localeCompare(
@@ -649,93 +476,67 @@ function render(
   const lines = [];
 
   success
-    .slice(
-      0,
-      TOP
-    )
+    .slice(0, TOP)
     .forEach(
-      (
-        item,
-        index
-      ) => {
+      (item, index) => {
+        let detail =
+          `${item.median} ms · HTTP ${item.status}`;
 
-        const reliability =
-          `${item.successes}/${ROUNDS}`;
+        /*
+         * Only display round info
+         * when more than one round is used.
+         */
+        if (ROUNDS > 1) {
+          detail +=
+            ` · ${item.successes}/${ROUNDS}`;
 
-        const warning =
-          item.failures
-            ? " ⚠︎"
-            : "";
+          if (item.failures) {
+            detail += " ⚠︎";
+          }
+        }
 
         lines.push(
-          `${index + 1}. ${item.policy}\n` +
-          `   ${item.median} ms · HTTP ${item.status} · ${reliability}${warning}`
+          `${index + 1}. ${item.policy}\n   ${detail}`
         );
-
       }
     );
 
-  if (
-    success.length >
-    TOP
-  ) {
-
+  if (success.length > TOP) {
     lines.push(
       `\n… ${
-        success.length -
-        TOP
-      } more successful policies`
+        success.length - TOP
+      } more policies`
     );
-
   }
 
-  if (
-    failed.length
-  ) {
-
+  if (failed.length) {
     lines.push(
       `\nFailed: ${failed.length}`
     );
 
-    failed
-      .slice(
-        0,
-        10
-      )
-      .forEach(
-        item => {
-
-          lines.push(
-            `• ${item.policy} — timeout/error`
-          );
-
-        }
-      );
-
-    if (
-      failed.length >
-      10
-    ) {
-
-      lines.push(
-        `… ${
-          failed.length -
-          10
-        } more failed policies`
-      );
-
-    }
+    failed.forEach(
+      item => {
+        lines.push(
+          `• ${item.policy} — timeout/error`
+        );
+      }
+    );
   }
 
   $done({
-
     title:
       "Web Node Benchmark",
 
     content:
       `Target: ${hostOf(TARGET)}\n` +
       `Group: ${GROUP}\n` +
-      `Nodes: ${results.length} · Rounds: ${ROUNDS}\n\n` +
+      `Policies: ${results.length}` +
+      (
+        ROUNDS > 1
+          ? ` · Rounds: ${ROUNDS}`
+          : ""
+      ) +
+      `\n\n` +
       (
         lines.join("\n") ||
         "No result."
