@@ -1,0 +1,10 @@
+#!name=Web Node Benchmark
+#!desc=Benchmark all proxy nodes in a Surge policy group against a custom website.
+#!arguments=group:Proxy,url:https://www.google.com/generate_204,request_timeout:6,concurrency:8,rounds:3,top:20
+#!arguments-desc=Configure the policy group, target URL, request timeout, concurrency, test rounds, and result count.
+
+[Panel]
+Web Node Benchmark = title="Web Node Benchmark", content="Tap refresh to benchmark nodes.", style=info, script-name=Web Node Benchmark
+
+[Script]
+Web Node Benchmark = type=generic, timeout=180, script-path=https://raw.githubusercontent.com/csjcsl666/Surge--/refs/heads/main/web-node-benchmark.js, argument="group={{{group}}}&request_timeout={{{request_timeout}}}&concurrency={{{concurrency}}}&rounds={{{rounds}}}&top={{{top}}}&url={{{url}}}"
