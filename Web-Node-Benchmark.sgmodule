@@ -1,10 +1,10 @@
 #!name=Web Node Benchmark
-#!desc=Benchmark all proxy nodes in a Surge policy group against a custom website.
-#!arguments=group:Proxy,url:https://www.google.com/generate_204,request_timeout:6,concurrency:8,rounds:3,top:20
-#!arguments-desc=Configure the policy group, target URL, request timeout, concurrency, test rounds, and result count.
+#!desc=同时测试指定网站的 HTTP GET 完成时间与 HTTP 延迟
+#!arguments=group:Proxy,url:https://www.google.com/generate_204,request_timeout:6,concurrency:8,rounds:1,top:20
+#!arguments-desc=Group：需要测试的策略组；URL：GET 与延迟测试共同使用的目标网站；Request Timeout：请求超时秒数；Concurrency：并发策略数量；Rounds：测试轮数；Top：最多显示数量。
 
 [Panel]
-Web Node Benchmark = title="Web Node Benchmark", content="Tap refresh to benchmark nodes.", style=info, script-name=Web Node Benchmark
+Web Node Benchmark = title="Web Node Benchmark", content="点击刷新开始测试", style=info, script-name=Web Node Benchmark
 
 [Script]
 Web Node Benchmark = type=generic, timeout=180, script-path=https://raw.githubusercontent.com/csjcsl666/Surge--/refs/heads/main/web-node-benchmark.js, argument="group={{{group}}}&request_timeout={{{request_timeout}}}&concurrency={{{concurrency}}}&rounds={{{rounds}}}&top={{{top}}}&url={{{url}}}"
