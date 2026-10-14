@@ -1,0 +1,5 @@
+#!name=中国移动 Real IP
+#!desc=中国移动 App 域名禁用 Fake IP 测试
+
+[General]
+always-real-ip = %INSERT% *.10086.cn, *.cmpassport.com, *.chinamobile.com, upc.zztfly.com
