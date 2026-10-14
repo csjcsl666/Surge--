@@ -18,4 +18,4 @@ DOMAIN-SUFFIX,online-cmcc.cn,DIRECT
 
 # 以下为“可选的单独诊断”，默认不启用：可能影响 App 统计/监控，不保证能解除代理检测。
 DOMAIN,dc.cmicapm.com,REJECT
-DOMAIN,apm.cmccapp.coc.10086.cn,REJECT
+DOMAIN,app.10086.cn,REJECT
