@@ -1,5 +1,21 @@
-#!name=中国移动 Real IP 扩展版
-#!desc=根据中国移动 App PCAP 扩大真实 IP 解析范围
+#!name=中国移动 - 代理兼容性测试
+#!desc=借鉴 Skip Proxy Lists 的中国移动域名兼容处理；仅修改接管/解析及分流，不隐藏 iOS VPN 网卡。
 
 [General]
-skip-proxy = %INSERT% *.10086.cn, *.cmpassport.com, *.chinamobile.com, *.online-cmcc.cn, *.miguvideo.com, *.yun.139.com, *.mcloud.139.com, uem.migu.cn, base.hjq.komect.com, da.mmarket.com, dc.cmicapm.com, *.zztfly.com, *.share.dnse2.com, api.share.mob.com, dualstack-logs.amap.com, ios.bugly.qq.com, wetype.weixin.qq.com
+# 参考 jkyin 的中国移动广东兼容条目，并扩展已在 10086 抓包中出现的主域名。
+skip-proxy = %APPEND% 10086.cn,*.10086.cn,gmcc.net,*.gmcc.net,*.cmpassport.com,*.chinamobile.com,*.online-cmcc.cn
+
+# 仅这些业务域名请求 Surge DNS 时返回真实地址，保留其他 App 的 Fake IP。
+always-real-ip = %APPEND% *.10086.cn,*.gmcc.net,*.cmpassport.com,*.chinamobile.com,*.online-cmcc.cn,*.miguvideo.com,*.yun.139.com,*.mcloud.139.com,uem.migu.cn,base.hjq.komect.com,da.mmarket.com,dc.cmicapm.com,*.zztfly.com,*.share.dnse2.com,api.share.mob.com,dualstack-logs.amap.com,ios.bugly.qq.com,wetype.weixin.qq.com
+
+[Rule]
+# 中国移动主要业务默认直连；放在宽泛的 IP/ASN/FINAL 规则之前。
+DOMAIN-SUFFIX,10086.cn,DIRECT
+DOMAIN-SUFFIX,gmcc.net,DIRECT
+DOMAIN-SUFFIX,cmpassport.com,DIRECT
+DOMAIN-SUFFIX,chinamobile.com,DIRECT
+DOMAIN-SUFFIX,online-cmcc.cn,DIRECT
+
+# 以下为“可选的单独诊断”，默认不启用：可能影响 App 统计/监控，不保证能解除代理检测。
+DOMAIN,dc.cmicapm.com,REJECT
+DOMAIN,apm.cmccapp.coc.10086.cn,REJECT
