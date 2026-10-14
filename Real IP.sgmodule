@@ -2,4 +2,4 @@
 #!desc=根据中国移动 App PCAP 扩大真实 IP 解析范围
 
 [General]
-always-real-ip = %INSERT% *.10086.cn, *.cmpassport.com, *.chinamobile.com, *.online-cmcc.cn, *.miguvideo.com, *.yun.139.com, *.mcloud.139.com, uem.migu.cn, base.hjq.komect.com, da.mmarket.com, dc.cmicapm.com, *.zztfly.com, *.share.dnse2.com, api.share.mob.com, dualstack-logs.amap.com, ios.bugly.qq.com, wetype.weixin.qq.com
+skip-proxy = %INSERT% *.10086.cn, *.cmpassport.com, *.chinamobile.com, *.online-cmcc.cn, *.miguvideo.com, *.yun.139.com, *.mcloud.139.com, uem.migu.cn, base.hjq.komect.com, da.mmarket.com, dc.cmicapm.com, *.zztfly.com, *.share.dnse2.com, api.share.mob.com, dualstack-logs.amap.com, ios.bugly.qq.com, wetype.weixin.qq.com
